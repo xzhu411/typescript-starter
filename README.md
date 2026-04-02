@@ -1,98 +1,165 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# NestJS Events Management API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A NestJS application for managing events with PostgreSQL persistence.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Prerequisites
 
-## Description
+- Node.js >= 20
+- npm >= 10
+- PostgreSQL >= 14
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Setup
 
-## Project setup
+1. **Install dependencies**
 
 ```bash
-$ npm install
+npm install
 ```
 
-## Compile and run the project
+2. **Configure environment**
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+cp .env.example .env
 ```
 
-## Run tests
+Edit `.env` with your PostgreSQL credentials:
+
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=postgres
+DB_DATABASE=events_db
+```
+
+3. **Create the database**
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+psql -U postgres -c "CREATE DATABASE events_db;"
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+4. **Start the server**
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run start:dev
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+The server runs at `http://localhost:3000`. Tables are auto-created on first run (`synchronize: true`).
 
-## Resources
+---
 
-Check out a few resources that may come in handy when working with NestJS:
+## API Reference
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+### Create Event
 
-## Support
+```
+POST /events
+```
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+**Body:**
+```json
+{
+  "title": "Sprint Planning",
+  "description": "Q1 planning session",
+  "status": "TODO",
+  "startTime": "2024-03-01T10:00:00Z",
+  "endTime": "2024-03-01T11:00:00Z",
+  "inviteeIds": [1, 2]
+}
+```
 
-## Stay in touch
+- `status`: `"TODO"` | `"IN_PROGRESS"` | `"COMPLETED"`
+- `description` and `inviteeIds` are optional
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+---
 
-## License
+### Get Event by ID
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+```
+GET /events/:id
+```
+
+Returns `404` if not found.
+
+---
+
+### Delete Event by ID
+
+```
+DELETE /events/:id
+```
+
+Returns `204 No Content` on success. Returns `404` if not found.
+
+---
+
+### Merge All Overlapping Events for a User
+
+```
+POST /events/merge-all/:userId
+```
+
+Finds all events belonging to the user, identifies overlapping intervals, and merges them:
+
+- **title / description**: appended with ` | `
+- **status**: highest priority wins (`COMPLETED` > `IN_PROGRESS` > `TODO`)
+- **startTime / endTime**: spans the full merged range
+- **invitees**: union of all merged events' invitees
+
+Original events are deleted and replaced with the merged event in both the `event` table and the user's event list.
+
+Returns the resulting list of events (merged + non-overlapping).
+
+---
+
+## Running Tests
+
+### Unit Tests (no database required)
+
+```bash
+npm test
+```
+
+### Unit Tests with coverage
+
+```bash
+npm run test:cov
+```
+
+### E2E Tests (requires PostgreSQL)
+
+Create a test database first:
+
+```bash
+psql -U postgres -c "CREATE DATABASE events_db_test;"
+```
+
+Then run:
+
+```bash
+npm run test:e2e
+```
+
+E2E tests use a separate `events_db_test` database and drop/recreate the schema on each run.
+
+---
+
+## Project Structure
+
+```
+src/
+├── app.module.ts           # Root module (TypeORM + Config setup)
+├── events/
+│   ├── dto/
+│   │   └── create-event.dto.ts
+│   ├── event.entity.ts
+│   ├── events.controller.ts
+│   ├── events.module.ts
+│   ├── events.service.ts
+│   └── events.service.spec.ts
+└── users/
+    ├── user.entity.ts
+    └── users.module.ts
+test/
+└── events.e2e-spec.ts
+```
