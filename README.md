@@ -5,7 +5,7 @@ A NestJS application for managing events with PostgreSQL persistence.
 ---
 ## 🎬 Watch Demo on Youtube (click the image below)
  
-[![Watch the demo](https://img.youtube.com/vi/y4o4HBXYw_Q/maxresdefault.jpg)](https://youtu.be/NHN3rI2yzko)
+[![Watch the demo](https://img.youtube.com/vi/NHN3rI2yzko/maxresdefault.jpg)](https://youtu.be/NHN3rI2yzko)
 
 ## Prerequisites
 
