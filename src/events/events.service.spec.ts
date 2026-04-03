@@ -86,7 +86,6 @@ describe('EventsService', () => {
     });
 
     it('resolves invitees and updates user.events string array', async () => {
-      // User currently has events: [] (empty string array)
       const user = makeUser(42, 'Bob', []);
       userRepo.findOne!
         .mockResolvedValueOnce(user)   // finding user by id for invitees
@@ -107,10 +106,34 @@ describe('EventsService', () => {
 
       await service.create(dto);
 
-      // user.events should now contain the new event's id as a string
       expect(userRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({ events: ['7'] }),
       );
+    });
+
+    it('silently skips inviteeId that does not exist in DB', async () => {
+      // userRepo.findOne returns null → user not found → skip, no crash
+      userRepo.findOne!.mockResolvedValue(null);
+
+      const dto: CreateEventDto = {
+        title: 'Ghost Meeting',
+        status: EventStatus.TODO,
+        startTime: '2024-01-01T10:00:00Z',
+        endTime: '2024-01-01T11:00:00Z',
+        inviteeIds: [999],
+      };
+
+      const built = makeEvent({ id: 5, invitees: [] });
+      eventRepo.create!.mockReturnValue(built);
+      eventRepo.save!.mockResolvedValue(built);
+
+      const result = await service.create(dto);
+
+      // Event saved with no invitees, no crash
+      expect(eventRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ invitees: [] }),
+      );
+      expect(result).toBe(built);
     });
   });
 
@@ -259,6 +282,72 @@ describe('EventsService', () => {
         expect.objectContaining({ events: ['99'] }),
       );
       expect(result).toEqual([mergedEvent]);
+    });
+
+    it('merges 3 chain-overlapping events into one', async () => {
+      // E1: 9-11, E2: 10-12, E3: 11:30-13 → all chain-overlap → one merged event
+      const user = makeUser(1, 'Alice', ['1', '2', '3']);
+      const e1 = makeEvent({ id: 1, title: 'E1', status: EventStatus.TODO,
+        startTime: new Date('2024-01-01T09:00:00Z'), endTime: new Date('2024-01-01T11:00:00Z'), invitees: [] });
+      const e2 = makeEvent({ id: 2, title: 'E2', status: EventStatus.TODO,
+        startTime: new Date('2024-01-01T10:00:00Z'), endTime: new Date('2024-01-01T12:00:00Z'), invitees: [] });
+      const e3 = makeEvent({ id: 3, title: 'E3', status: EventStatus.TODO,
+        startTime: new Date('2024-01-01T11:30:00Z'), endTime: new Date('2024-01-01T13:00:00Z'), invitees: [] });
+      const merged = makeEvent({ id: 99, title: 'E1 | E2 | E3', status: EventStatus.TODO,
+        startTime: new Date('2024-01-01T09:00:00Z'), endTime: new Date('2024-01-01T13:00:00Z'), invitees: [] });
+
+      userRepo.findOne!.mockResolvedValue(user);
+      eventRepo.find!
+        .mockResolvedValueOnce([e1, e2, e3])
+        .mockResolvedValueOnce([merged]);
+      eventRepo.remove!.mockResolvedValue(undefined);
+      eventRepo.create!.mockReturnValue(merged);
+      eventRepo.save!.mockResolvedValue(merged);
+      userRepo.save!.mockResolvedValue(user);
+
+      const result = await service.mergeAll(1);
+
+      // All 3 events removed in one call
+      expect(eventRepo.remove).toHaveBeenCalledWith([e1, e2, e3]);
+      expect(eventRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'E1 | E2 | E3' }),
+      );
+      expect(result).toEqual([merged]);
+    });
+
+    it('syncs other invitees user.events when merging (Bob scenario)', async () => {
+      // Alice and Bob both invited to E2 → mergeAll(Alice) should update Bob.events too
+      const alice = makeUser(1, 'Alice', ['1', '2']);
+      const bob   = makeUser(2, 'Bob',   ['2']);
+
+      const e1 = makeEvent({ id: 1, title: 'E1', status: EventStatus.TODO,
+        startTime: new Date('2024-01-01T14:00:00Z'), endTime: new Date('2024-01-01T15:00:00Z'),
+        invitees: [alice] });
+      const e2 = makeEvent({ id: 2, title: 'E2', status: EventStatus.TODO,
+        startTime: new Date('2024-01-01T14:30:00Z'), endTime: new Date('2024-01-01T16:00:00Z'),
+        invitees: [alice, bob] }); // Bob is also in E2
+
+      const merged = makeEvent({ id: 99, title: 'E1 | E2', status: EventStatus.TODO,
+        startTime: new Date('2024-01-01T14:00:00Z'), endTime: new Date('2024-01-01T16:00:00Z'),
+        invitees: [alice, bob] });
+
+      userRepo.findOne!
+        .mockResolvedValueOnce(alice)  // load alice for mergeAll
+        .mockResolvedValueOnce(bob);   // load bob to sync his user.events
+      eventRepo.find!
+        .mockResolvedValueOnce([e1, e2])
+        .mockResolvedValueOnce([merged]);
+      eventRepo.remove!.mockResolvedValue(undefined);
+      eventRepo.create!.mockReturnValue(merged);
+      eventRepo.save!.mockResolvedValue(merged);
+      userRepo.save!.mockResolvedValue(alice);
+
+      await service.mergeAll(1);
+
+      // Bob's user.events should have '2' replaced by '99'
+      expect(userRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 2, events: expect.arrayContaining(['99']) }),
+      );
     });
 
     it('picks highest status when merging (COMPLETED wins)', async () => {

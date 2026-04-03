@@ -103,6 +103,30 @@ describe('Events API (e2e)', () => {
         .send({ description: 'No title' })
         .expect(400);
     });
+
+    it('returns 400 when status is an invalid enum value', () => {
+      return request(app.getHttpServer())
+        .post('/events')
+        .send({
+          title: 'Bad Status',
+          status: 'INVALID_STATUS',
+          startTime: '2024-03-01T10:00:00Z',
+          endTime: '2024-03-01T11:00:00Z',
+        })
+        .expect(400);
+    });
+
+    it('returns 400 when date format is invalid', () => {
+      return request(app.getHttpServer())
+        .post('/events')
+        .send({
+          title: 'Bad Date',
+          status: EventStatus.TODO,
+          startTime: 'not-a-date',
+          endTime: '2024-03-01T11:00:00Z',
+        })
+        .expect(400);
+    });
   });
 
   // ─── GET /events/:id ──────────────────────────────────────────────────────
@@ -240,6 +264,86 @@ describe('Events API (e2e)', () => {
         .expect(201);
 
       expect(res.body).toEqual([]);
+    });
+
+    it('preserves non-overlapping events unchanged', async () => {
+      const userRepo = dataSource.getRepository(User);
+      const eventRepo = dataSource.getRepository(Event);
+
+      const user = await userRepo.save({ name: 'Charlie', events: [] });
+
+      // Two events with NO overlap (9-10, 11-12)
+      const e1 = await eventRepo.save(eventRepo.create({
+        title: 'Morning', status: EventStatus.TODO,
+        startTime: new Date('2024-03-01T09:00:00Z'),
+        endTime: new Date('2024-03-01T10:00:00Z'),
+        invitees: [user],
+      }));
+      const e2 = await eventRepo.save(eventRepo.create({
+        title: 'Afternoon', status: EventStatus.TODO,
+        startTime: new Date('2024-03-01T11:00:00Z'),
+        endTime: new Date('2024-03-01T12:00:00Z'),
+        invitees: [user],
+      }));
+
+      user.events = [String(e1.id), String(e2.id)];
+      await userRepo.save(user);
+
+      const res = await request(app.getHttpServer())
+        .post(`/events/merge-all/${user.id}`)
+        .expect(201);
+
+      // Both events returned unchanged, none deleted
+      expect(res.body).toHaveLength(2);
+      const titles = res.body.map((e: Event) => e.title);
+      expect(titles).toContain('Morning');
+      expect(titles).toContain('Afternoon');
+
+      // Both events still exist in DB
+      await expect(eventRepo.findOne({ where: { id: e1.id } })).resolves.not.toBeNull();
+      await expect(eventRepo.findOne({ where: { id: e2.id } })).resolves.not.toBeNull();
+    });
+
+    it('syncs other invitees user.events after merging (Bob scenario)', async () => {
+      const userRepo = dataSource.getRepository(User);
+      const eventRepo = dataSource.getRepository(Event);
+
+      const alice = await userRepo.save({ name: 'Alice', events: [] });
+      const bob   = await userRepo.save({ name: 'Bob',   events: [] });
+
+      // E1: only Alice; E2: Alice + Bob — they overlap
+      const e1 = await eventRepo.save(eventRepo.create({
+        title: 'E1', status: EventStatus.TODO,
+        startTime: new Date('2024-03-01T14:00:00Z'),
+        endTime: new Date('2024-03-01T15:00:00Z'),
+        invitees: [alice],
+      }));
+      const e2 = await eventRepo.save(eventRepo.create({
+        title: 'E2', status: EventStatus.IN_PROGRESS,
+        startTime: new Date('2024-03-01T14:30:00Z'),
+        endTime: new Date('2024-03-01T16:00:00Z'),
+        invitees: [alice, bob],
+      }));
+
+      alice.events = [String(e1.id), String(e2.id)];
+      bob.events   = [String(e2.id)];
+      await userRepo.save(alice);
+      await userRepo.save(bob);
+
+      const res = await request(app.getHttpServer())
+        .post(`/events/merge-all/${alice.id}`)
+        .expect(201);
+
+      const mergedId = String(res.body[0].id);
+
+      // Alice.events → [mergedId]
+      const updatedAlice = await userRepo.findOne({ where: { id: alice.id } });
+      expect(updatedAlice!.events).toEqual([mergedId]);
+
+      // Bob.events → old E2 removed, mergedId added
+      const updatedBob = await userRepo.findOne({ where: { id: bob.id } });
+      expect(updatedBob!.events).not.toContain(String(e2.id));
+      expect(updatedBob!.events).toContain(mergedId);
     });
   });
 });
