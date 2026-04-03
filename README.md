@@ -44,6 +44,7 @@ psql -U postgres -c "CREATE DATABASE events_db;"
 npm run start:dev
 ```
 
+check out `http://localhost:3000/api` using swagger UI to observe api.
 The server runs at `http://localhost:3000`. Tables are auto-created on first run (`synchronize: true`).
 
 ---
