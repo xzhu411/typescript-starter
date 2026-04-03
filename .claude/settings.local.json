@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(export PATH=\"/opt/homebrew/bin:$PATH\")",
+      "Bash(npm test:*)",
+      "Bash(psql --version)",
+      "Bash(brew services:*)",
+      "Read(//opt/homebrew/bin/**)",
+      "Read(//usr/local/bin/**)",
+      "Read(//Applications/Postgres.app/Contents/**)",
+      "Bash(brew install:*)",
+      "Bash(export PATH=\"/opt/homebrew/opt/postgresql@16/bin:$PATH\")",
+      "Bash(psql -U postgres -d events_db -c \"SELECT 1;\")",
+      "Bash(export PATH=\"/opt/homebrew/opt/postgresql@16/bin:/opt/homebrew/bin:$PATH\")",
+      "Bash(npm run:*)",
+      "Bash(open /Applications/TablePlus.app)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr:*)",
+      "Bash(gh auth:*)"
+    ]
+  }
+}
